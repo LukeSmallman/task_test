@@ -147,9 +147,25 @@ def edit_task(task_id):
 
 @app.route("/delete_task/<task_id>")
 def delete_task(task_id):
-    mongo.db.tasks.remove({"_id": ObjectId(task_id)})
-    flash("Task Successfully Deleted")
-    return redirect(url_for("get_tasks"))
+    if "user" in session:
+        user = session["user"]
+        task = mongo.db.tasks.find_one({"_id": ObjectId(task_id)})
+        if task["created_by"]:
+            if task["created_by"] == user:
+                mongo.db.users.update_many(
+                    {}, {"$pull": {"favourites": ObjectId(task_id)}})
+                mongo.db.tasks.remove({"_id": ObjectId(task_id)})
+                flash("Task Successfully Deleted")
+            else:
+                flash("Sorry, you are not authorised to do this")
+                return redirect(url_for("get_tasks"))
+        else:
+            flash("Sorry, you are not authorised to do this")
+            return redirect(url_for("get_tasks"))
+    else:
+        flash("Sorry, you are unable to do this, please log in")
+        return redirect(url_for("login"))
+    return redirect(url_for("get_tasks")) 
 
 @app.route("/get_categories")
 def get_categories():
